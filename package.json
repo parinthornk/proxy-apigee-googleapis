@@ -1,0 +1,20 @@
+{
+  "name": "proxy-apigee-googleapis",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HTTP reverse proxy that forwards requests to https://apigee.googleapis.com using a Google service account for authentication",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "dev": "node --watch --env-file-if-exists=.env src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "google-auth-library": "^9.15.1",
+    "http-proxy-middleware": "^3.0.5"
+  }
+}
