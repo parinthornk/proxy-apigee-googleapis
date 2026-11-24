@@ -3,6 +3,8 @@ import { JWT } from 'google-auth-library';
 
 const EXPIRY_SKEW_MS = 60_000;
 const FALLBACK_TOKEN_TTL_MS = 55 * 60_000;
+const STATIC_TOKEN_HINT =
+  'A static access token expires and must be replaced manually when Google starts returning 401.';
 
 export function loadServiceAccount(keyFile) {
   let raw;
@@ -85,6 +87,7 @@ export function createTokenProvider({
   }
 
   return {
+    mode: 'service_account',
     getToken,
     async getAuthorizationHeader() {
       return `Bearer ${await getToken()}`;
@@ -94,4 +97,98 @@ export function createTokenProvider({
       inFlight = null;
     },
   };
+}
+
+export function normalizeStaticToken(token) {
+  return String(token ?? '')
+    .trim()
+    .replace(/^Bearer\s+/i, '')
+    .trim();
+}
+
+export function createStaticTokenProvider({ token }) {
+  const value = normalizeStaticToken(token);
+  if (!value) {
+    throw new Error('STATIC_ACCESS_TOKEN is empty; provide a Google access token such as "ya29...".');
+  }
+
+  const header = `Bearer ${value}`;
+  return {
+    mode: 'static_token',
+    async getToken() {
+      return value;
+    },
+    async getAuthorizationHeader() {
+      return header;
+    },
+    reset() {},
+  };
+}
+
+export function createTokenProviderWithFallback({ primary, staticToken, logger = console }) {
+  const fallback = createStaticTokenProvider({ token: staticToken });
+  let usingFallback = false;
+
+  async function getToken() {
+    if (usingFallback) return fallback.getToken();
+
+    try {
+      return await primary.getToken();
+    } catch (err) {
+      usingFallback = true;
+      logger.warn?.(
+        `Service account token request failed (${err.message}); falling back to STATIC_ACCESS_TOKEN. ${STATIC_TOKEN_HINT}`,
+      );
+      return fallback.getToken();
+    }
+  }
+
+  return {
+    mode: 'service_account_with_static_fallback',
+    getToken,
+    async getAuthorizationHeader() {
+      return `Bearer ${await getToken()}`;
+    },
+    reset() {
+      usingFallback = false;
+      primary.reset?.();
+    },
+  };
+}
+
+export function createAuthTokenProvider({
+  keyFile,
+  scopes,
+  subject,
+  staticToken,
+  logger = console,
+}) {
+  const hasStaticToken = Boolean(normalizeStaticToken(staticToken));
+
+  if (!keyFile) {
+    if (!hasStaticToken) {
+      throw new Error(
+        'Missing service account key file. Set GOOGLE_APPLICATION_CREDENTIALS (or SA_KEY_FILE) to the path of the Google service account JSON file, or set STATIC_ACCESS_TOKEN to a temporary Google access token.',
+      );
+    }
+    logger.warn?.(
+      `No service account key file configured; authenticating with STATIC_ACCESS_TOKEN. ${STATIC_TOKEN_HINT}`,
+    );
+    return createStaticTokenProvider({ token: staticToken });
+  }
+
+  let primary;
+  try {
+    primary = createTokenProvider({ keyFile, scopes, subject });
+  } catch (err) {
+    if (!hasStaticToken) throw err;
+    logger.warn?.(
+      `Cannot use the service account key (${err.message}); authenticating with STATIC_ACCESS_TOKEN. ${STATIC_TOKEN_HINT}`,
+    );
+    return createStaticTokenProvider({ token: staticToken });
+  }
+
+  return hasStaticToken
+    ? createTokenProviderWithFallback({ primary, staticToken, logger })
+    : primary;
 }

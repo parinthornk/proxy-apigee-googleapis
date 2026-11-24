@@ -13,6 +13,7 @@ test('applies sane defaults', () => {
   assert.equal(config.port, 8080);
   assert.equal(config.host, '127.0.0.1');
   assert.equal(config.keyFile, 'C:/keys/service-account.json');
+  assert.equal(config.staticToken, '');
   assert.deepEqual(config.scopes, ['https://www.googleapis.com/auth/cloud-platform']);
   assert.deepEqual(config.allowedPathPrefixes, []);
   assert.deepEqual(config.allowedMethods, []);
@@ -67,5 +68,25 @@ test('rejects invalid numeric settings', () => {
   assert.throws(
     () => loadConfig({ ...baseEnv, PORT: 'not-a-number' }),
     /PORT must be a positive integer/,
+  );
+});
+
+test('accepts a static access token instead of a service account key', () => {
+  const config = loadConfig({ STATIC_ACCESS_TOKEN: 'ya29.static-token' });
+
+  assert.equal(config.keyFile, '');
+  assert.equal(config.staticToken, 'ya29.static-token');
+});
+
+test('normalizes a static access token and rejects one with whitespace inside', () => {
+  assert.equal(
+    loadConfig({ ...baseEnv, STATIC_ACCESS_TOKEN: '  Bearer ya29.with-prefix  ' }).staticToken,
+    'ya29.with-prefix',
+  );
+  assert.equal(loadConfig({ ...baseEnv, STATIC_ACCESS_TOKEN: '   ' }).staticToken, '');
+
+  assert.throws(
+    () => loadConfig({ ...baseEnv, STATIC_ACCESS_TOKEN: 'ya29.one ya29.two' }),
+    /STATIC_ACCESS_TOKEN must be a single token without whitespace/,
   );
 });

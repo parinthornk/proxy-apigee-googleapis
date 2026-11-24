@@ -10,6 +10,15 @@ A small HTTP reverse proxy that forwards requests to `https://apigee.googleapis.
 4. The token is cached in memory until it nears expiry (60 s skew) and shared by concurrent requests.
 5. Every forwarded request has its `Authorization` header replaced with `Bearer <access token>`; any client-supplied `Authorization` is discarded.
 
+### Fallback: a static temporary token
+
+If `STATIC_ACCESS_TOKEN` is set and the service account path cannot produce a token, the proxy authenticates with that token instead:
+
+- the key file is missing, unreadable, not valid JSON, or not a service account key → the proxy starts anyway and logs a warning once;
+- the key file loads but the token exchange fails at request time (bad signature, network, revoked key) → the first failure logs a warning and the static token is used from then on.
+
+The service account always wins when it works. The token is never logged, is held in memory only, and usually expires within an hour, so expect `401` from Apigee once it does. Get one with `gcloud auth print-access-token` (or `gcloud auth application-default print-access-token`) and restart the proxy with the new value.
+
 ## Requirements
 
 - Node.js 20.19+ (uses `--env-file-if-exists`)
@@ -50,7 +59,8 @@ Example output for `healthz`:
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `GOOGLE_APPLICATION_CREDENTIALS` / `SA_KEY_FILE` | required | Path to the service account JSON key |
+| `GOOGLE_APPLICATION_CREDENTIALS` / `SA_KEY_FILE` | required unless `STATIC_ACCESS_TOKEN` is set | Path to the service account JSON key |
+| `STATIC_ACCESS_TOKEN` | unset | Temporary Google access token (`ya29...`, `Bearer ` prefix optional) used when the service account key cannot provide a token |
 | `TARGET_URL` | `https://apigee.googleapis.com` | Upstream base URL; must be HTTPS unless `ALLOW_INSECURE_TARGET=true` |
 | `HOST` | `127.0.0.1` | Listen address; use `0.0.0.0` when running in a container |
 | `PORT` | `8080` | Listen port |
@@ -98,6 +108,7 @@ The suite uses Node's built-in test runner and does not call Google. It starts a
 
 - The proxy has no authentication of its own. Bind it to `127.0.0.1` or put it behind your platform's auth. Use `ALLOWED_PATH_PREFIXES` to limit blast radius.
 - Never commit the service account JSON; rotate the key if it leaks.
+- `STATIC_ACCESS_TOKEN` is a bearer credential too: keep it out of Git and logs, prefer the service account, and unset it once the key works again.
 - The access token is cached in process memory only and never written to disk.
 - `TARGET_URL` defaults to HTTPS and plaintext targets are rejected unless explicitly allowed.
 

@@ -1,7 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { close, listen, makeConfig, startProxy, startUpstream, urlFor } from '../test-utils/helpers.js';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { createAuthTokenProvider } from '../src/auth.js';
+import {
+  close,
+  listen,
+  makeConfig,
+  silentLogger,
+  startProxy,
+  startUpstream,
+  urlFor,
+} from '../test-utils/helpers.js';
 
 const READ_ONLY_PREFIXES = [
   '/v1/organizations/*/apis',
@@ -271,4 +282,27 @@ test('returns 502 when the target is unreachable', async (t) => {
   const res = await fetch(`${proxy.baseUrl}/v1/organizations/demo`);
   assert.equal(res.status, 502);
   assert.equal((await res.json()).error, 'upstream_error');
+});
+
+test('forwards requests with STATIC_ACCESS_TOKEN when the service account key is unusable', async (t) => {
+  const upstream = await startUpstream();
+  const tokenProvider = createAuthTokenProvider({
+    keyFile: join(tmpdir(), 'missing-service-account.json'),
+    staticToken: 'ya29.static-token',
+    logger: silentLogger,
+  });
+  const proxy = await startProxy({
+    config: makeConfig({ target: upstream.url }),
+    tokenProvider,
+  });
+  t.after(proxy.close);
+  t.after(upstream.close);
+
+  const res = await fetch(`${proxy.baseUrl}/v1/organizations/demo/apis`, {
+    headers: { authorization: 'Bearer client-supplied' },
+  });
+  assert.equal(res.status, 200);
+
+  assert.equal(upstream.requests.length, 1);
+  assert.equal(upstream.requests[0].headers.authorization, 'Bearer ya29.static-token');
 });

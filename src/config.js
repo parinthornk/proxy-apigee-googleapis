@@ -34,14 +34,27 @@ function normalizeBasePath(value) {
   return `/${trimmed.replace(/^\/+|\/+$/g, '')}`;
 }
 
+function readStaticToken(value, name) {
+  const token = String(value ?? '')
+    .trim()
+    .replace(/^Bearer\s+/i, '')
+    .trim();
+  if (!token) return '';
+  if (/\s/.test(token)) {
+    throw new Error(`${name} must be a single token without whitespace.`);
+  }
+  return token;
+}
+
 export function loadConfig(env = process.env) {
   const target = (env.TARGET_URL ?? DEFAULT_TARGET).replace(/\/+$/, '');
   const targetUrl = new URL(target);
 
   const keyFile = env.GOOGLE_APPLICATION_CREDENTIALS ?? env.SA_KEY_FILE ?? '';
-  if (!keyFile) {
+  const staticToken = readStaticToken(env.STATIC_ACCESS_TOKEN, 'STATIC_ACCESS_TOKEN');
+  if (!keyFile && !staticToken) {
     throw new Error(
-      'Missing service account key file. Set GOOGLE_APPLICATION_CREDENTIALS (or SA_KEY_FILE) to the path of the Google service account JSON file.',
+      'Missing service account key file. Set GOOGLE_APPLICATION_CREDENTIALS (or SA_KEY_FILE) to the path of the Google service account JSON file, or set STATIC_ACCESS_TOKEN to a temporary Google access token.',
     );
   }
 
@@ -50,6 +63,7 @@ export function loadConfig(env = process.env) {
     port: readInt(env.PORT, DEFAULT_PORT, 'PORT'),
     host: env.HOST ?? DEFAULT_HOST,
     keyFile,
+    staticToken,
     scopes: readList(env.GOOGLE_SCOPES).length ? readList(env.GOOGLE_SCOPES) : DEFAULT_SCOPES,
     subject: env.GOOGLE_IMPERSONATE_SUBJECT || undefined,
     allowedPathPrefixes: readList(env.ALLOWED_PATH_PREFIXES),

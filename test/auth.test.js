@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTokenProvider, loadServiceAccount } from '../src/auth.js';
+import {
+  createAuthTokenProvider,
+  createTokenProvider,
+  createTokenProviderWithFallback,
+  loadServiceAccount,
+} from '../src/auth.js';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -146,4 +151,106 @@ test('produces a bearer authorization header', async () => {
   }));
   const provider = createTokenProvider({ client });
   assert.equal(await provider.getAuthorizationHeader(), 'Bearer abc');
+});
+
+function recordingLogger() {
+  const warnings = [];
+  return { warnings, warn: (message) => warnings.push(message), info() {}, error() {} };
+}
+
+const missingKeyFile = () => join(tmpdir(), 'missing-service-account.json');
+
+test('uses the static token when the service account file cannot be read', async () => {
+  const logger = recordingLogger();
+  const provider = createAuthTokenProvider({
+    keyFile: missingKeyFile(),
+    staticToken: 'ya29.static',
+    logger,
+  });
+
+  assert.equal(provider.mode, 'static_token');
+  assert.equal(await provider.getAuthorizationHeader(), 'Bearer ya29.static');
+  assert.match(logger.warnings[0], /Cannot use the service account key/);
+  assert.doesNotMatch(logger.warnings[0], /ya29\.static/);
+});
+
+test('uses the static token when the service account file is not a valid key', async () => {
+  const { file, cleanup } = writeTempJson('{not json');
+  try {
+    const provider = createAuthTokenProvider({
+      keyFile: file,
+      staticToken: 'ya29.invalid-key-fallback',
+      logger: recordingLogger(),
+    });
+    assert.equal(await provider.getAuthorizationHeader(), 'Bearer ya29.invalid-key-fallback');
+  } finally {
+    cleanup();
+  }
+});
+
+test('uses the static token when no service account file is configured', async () => {
+  const provider = createAuthTokenProvider({
+    keyFile: '',
+    staticToken: 'ya29.no-key',
+    logger: recordingLogger(),
+  });
+  assert.equal(await provider.getAuthorizationHeader(), 'Bearer ya29.no-key');
+});
+
+test('reports the service account error when there is no static token to fall back to', () => {
+  assert.throws(
+    () => createAuthTokenProvider({ keyFile: missingKeyFile(), logger: recordingLogger() }),
+    /Cannot read the service account file/,
+  );
+  assert.throws(
+    () => createAuthTokenProvider({ keyFile: '', logger: recordingLogger() }),
+    /Missing service account key file/,
+  );
+});
+
+test('keeps using the service account when the key is usable', async () => {
+  const { file, cleanup } = writeTempJson(JSON.stringify(validCredentials));
+  try {
+    const provider = createAuthTokenProvider({
+      keyFile: file,
+      staticToken: 'ya29.unused',
+      logger: recordingLogger(),
+    });
+    assert.equal(provider.mode, 'service_account_with_static_fallback');
+  } finally {
+    cleanup();
+  }
+});
+
+test('falls back to the static token when the token exchange fails at runtime', async () => {
+  let calls = 0;
+  const primary = {
+    async getToken() {
+      calls += 1;
+      throw new Error('invalid_grant');
+    },
+  };
+  const logger = recordingLogger();
+  const provider = createTokenProviderWithFallback({
+    primary,
+    staticToken: 'ya29.after-failure',
+    logger,
+  });
+
+  assert.equal(await provider.getAuthorizationHeader(), 'Bearer ya29.after-failure');
+  assert.equal(await provider.getAuthorizationHeader(), 'Bearer ya29.after-failure');
+  assert.equal(calls, 1);
+  assert.equal(logger.warnings.length, 1);
+  assert.match(logger.warnings[0], /invalid_grant/);
+  assert.doesNotMatch(logger.warnings[0], /ya29\.after-failure/);
+});
+
+test('prefers the service account token while it works', async () => {
+  const provider = createTokenProviderWithFallback({
+    primary: { async getToken() { return 'sa-token'; } },
+    staticToken: 'ya29.unused',
+    logger: recordingLogger(),
+  });
+
+  assert.equal(await provider.getAuthorizationHeader(), 'Bearer sa-token');
 });
