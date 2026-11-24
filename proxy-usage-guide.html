@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apigee Local Management Proxy — Usage Guide</title>
+<style>
+  :root {
+    --bg: #0f1216;
+    --panel: #161b22;
+    --panel-2: #1c232c;
+    --border: #2a3340;
+    --text: #d8dee9;
+    --muted: #8b98a8;
+    --accent: #4da3ff;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --block: #f85149;
+    --code-bg: #0b0e12;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.65 "Segoe UI", system-ui, -apple-system, sans-serif;
+    padding: 40px 20px 80px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 22px; margin-bottom: 30px; }
+  h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.3px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0; }
+  .sub code { color: var(--accent); }
+  h2 {
+    font-size: 19px; margin: 44px 0 14px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border); letter-spacing: -0.2px;
+  }
+  h3 { font-size: 15px; margin: 26px 0 10px; color: #eef2f7; }
+  p { margin: 10px 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+    font-size: 0.88em;
+    background: var(--panel-2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #a5d6ff;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code { background: none; padding: 0; color: #c9d6e3; font-size: inherit; }
+  .k { color: #79c0ff; }
+  .s { color: #a5d6ff; }
+  .c { color: #6b7d90; font-style: italic; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 13.5px;
+    background: var(--panel);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--panel-2); font-weight: 600; font-size: 12.5px; color: #b9c6d6; text-transform: uppercase; letter-spacing: 0.4px; }
+  tr:last-child td { border-bottom: none; }
+  td code { font-size: 0.85em; }
+  .badge {
+    display: inline-block; padding: 1px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px; white-space: nowrap;
+  }
+  .b-ok { background: rgba(63,185,80,0.15); color: var(--ok); border: 1px solid rgba(63,185,80,0.35); }
+  .b-warn { background: rgba(210,153,34,0.15); color: var(--warn); border: 1px solid rgba(210,153,34,0.35); }
+  .b-block { background: rgba(248,81,73,0.13); color: var(--block); border: 1px solid rgba(248,81,73,0.35); }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin: 16px 0;
+  }
+  .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0; }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout.bad { border-left-color: var(--block); }
+  .callout p { margin: 6px 0; }
+  .callout strong { color: #fff; }
+  ul, ol { padding-left: 22px; margin: 10px 0; }
+  li { margin: 6px 0; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .muted { color: var(--muted); }
+  .toc { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 22px; margin-bottom: 10px; }
+  .toc ol { margin: 6px 0; }
+  .toc a { color: #b9c6d6; }
+  .base {
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 15px;
+    color: var(--accent);
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: block;
+    margin: 12px 0;
+  }
+  .fine { font-size: 12.5px; color: var(--muted); }
+  footer { margin-top: 50px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Apigee Local Management Proxy — Usage Guide</h1>
+  <p class="sub">Read-through proxy to the Apigee X Management API &middot; <code>http://localhost:8080</code> &middot; org <code>gcp-pttep-th-it-apimgmt-dev</code></p>
+  <p class="sub">Behavior documented by live testing on 24 Nov 2026. Every status code and payload shown was observed against the running proxy.</p>
+</header>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">What this proxy is</a></li>
+    <li><a href="#url">URL structure</a></li>
+    <li><a href="#methods">Allowed methods</a></li>
+    <li><a href="#endpoints">Verified endpoints</a></li>
+    <li><a href="#errors">Error responses</a></li>
+    <li><a href="#analytics">Analytics recipes</a></li>
+    <li><a href="#artifacts">Query result files</a></li>
+    <li><a href="#clients">Calling it from shell tools</a></li>
+    <li><a href="#gotchas">Gotchas and limits</a></li>
+    <li><a href="#security">Security notes</a></li>
+    <li><a href="#verify">Verifying the proxy</a></li>
+  </ol>
+</div>
+
+<h2 id="overview">1. What this proxy is</h2>
+
+<p>A local HTTP server that forwards Apigee Management API calls upstream, injecting credentials for you. You call it as if it were <code>apigee.googleapis.com</code>, minus the authentication work.</p>
+
+<ul>
+  <li><strong>Path mapping is 1:1.</strong> <code>http://localhost:8080/v1/organizations/&hellip;</code> corresponds to <code>https://apigee.googleapis.com/v1/organizations/&hellip;</code>.</li>
+  <li><strong>No auth required locally.</strong> Requests succeed with no <code>Authorization</code> header. Sending a bogus bearer token still returns <code>200</code>, so the proxy overrides client credentials with its own.</li>
+  <li><strong>Responses are passed through essentially untouched</strong> &mdash; gzip, <code>server: ESF</code>, Google RPC error envelopes, and <code>requestId</code> trace details all arrive intact.</li>
+  <li><strong>Read-mostly.</strong> Every GET works. Writes are gated (see <a href="#methods">Allowed methods</a>).</li>
+</ul>
+
+<h3>Environments in this org</h3>
+<p><code>dev</code> &middot; <code>dev2</code> &middot; <code>dev3</code> &middot; <code>sit</code> &middot; <code>sit2</code> &middot; <code>sit3</code></p>
+<p class="fine">Retrieve the current list at any time with <code>GET /v1/organizations/gcp-pttep-th-it-apimgmt-dev/environments</code>.</p>
+
+<h2 id="url">2. URL structure</h2>
+
+<span class="base">http://localhost:8080/v1/organizations/{org}/&hellip;</span>
+
+<div class="grid">
+  <div class="card">
+    <h3 style="margin-top:0">Management</h3>
+    <pre><code>/v1/organizations/{org}/apis
+/v1/organizations/{org}/apis/{apiName}
+/v1/organizations/{org}/environments</code></pre>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Analytics</h3>
+    <pre><code>/v1/organizations/{org}/environments/{env}/stats/{dimension}
+/v1/organizations/{org}/environments/{env}/queries
+/v1/organizations/{org}/environments/{env}/queries/{id}
+/v1/organizations/{org}/environments/{env}/queries/{id}/result
+/v1/organizations/{org}/environments/{env}/analytics/exports</code></pre>
+  </div>
+</div>
+
+<p>In all examples below, <code>{org}</code> = <code>gcp-pttep-th-it-apimgmt-dev</code>.</p>
+
+<h2 id="methods">3. Allowed methods</h2>
+
+<table>
+  <thead>
+    <tr><th>Method</th><th>Scope</th><th>State</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>GET</code></td><td>All paths</td><td><span class="badge b-ok">ALLOWED</span></td><td>Fully functional across every endpoint tested.</td></tr>
+    <tr><td><code>POST</code></td><td><code>&hellip;/queries</code></td><td><span class="badge b-ok">ALLOWED</span></td><td>Enabled Nov 2026. Creates async analytics query jobs.</td></tr>
+    <tr><td><code>POST</code></td><td><code>&hellip;/analytics/exports</code></td><td><span class="badge b-warn">BLOCKED</span></td><td>Returns <code>405</code>. Enable separately if you need data exports.</td></tr>
+    <tr><td><code>DELETE</code></td><td>All paths</td><td><span class="badge b-block">BLOCKED</span></td><td>Returns <code>405</code>. Cannot cancel or clean up query jobs.</td></tr>
+    <tr><td><code>PUT</code> / <code>PATCH</code></td><td>All paths</td><td><span class="badge b-block">BLOCKED</span></td><td>Returns <code>405</code>. The proxy cannot modify configuration.</td></tr>
+  </tbody>
+</table>
+
+<p>A blocked method is rejected by the proxy itself, before Apigee is contacted:</p>
+
+<pre><code><span class="c">HTTP/1.1 405 Method Not Allowed</span>
+<span class="c">Allow: GET</span>
+
+{
+  <span class="k">"error"</span>: <span class="s">"method_not_allowed"</span>,
+  <span class="k">"message"</span>: <span class="s">"The requested HTTP method is not allowed."</span>,
+  <span class="k">"allowedMethods"</span>: [<span class="s">"GET"</span>]
+}</code></pre>
+
+<p class="fine">This shape is distinct from Apigee's error envelope, which is the quickest way to tell "my proxy said no" from "Apigee said no".</p>
+
+<h2 id="endpoints">4. Verified endpoints</h2>
+
+<table>
+  <thead>
+    <tr><th>Endpoint</th><th>Status</th><th>Typical latency</th><th>What you get</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>GET /v1/organizations/{org}/apis</code></td>
+      <td><span class="badge b-ok">200</span></td>
+      <td>~0.6 s</td>
+      <td>All API proxies (353 at time of testing)</td>
+    </tr>
+    <tr>
+      <td><code>GET /v1/organizations/{org}/apis/{name}</code></td>
+      <td><span class="badge b-ok">200</span></td>
+      <td>~0.7 s</td>
+      <td>Single proxy detail with revisions</td>
+    </tr>
+    <tr>
+      <td><code>GET /v1/organizations/{org}/environments</code></td>
+      <td><span class="badge b-ok">200</span></td>
+      <td>~0.5 s</td>
+      <td>Environment name array</td>
+    </tr>
+    <tr>
+      <td><code>GET &hellip;/environments/{env}/stats/{dimension}</code></td>
+      <td><span class="badge b-ok">200</span></td>
+      <td>1.6&ndash;3.0 s</td>
+      <td>Synchronous analytics report</td>
+    </tr>
+    <tr>
+      <td><code>GET &hellip;/environments/{env}/queries</code></td>
+      <td><span class="badge b-ok">200</span></td>
+      <td>~1.8 s</td>
+      <td>List of async query jobs</td>
+    </tr>
+    <tr>
+      <td><code>GET &hellip;/environments/{env}/queries/{id}</code></td>
+      <td><span class="badge b-ok">200</span></td>
+      <td>~1.0 s</td>
+      <td>Job state, row count, result link</td>
+    </tr>
+    <tr>
+      <td><code>GET &hellip;/environments/{env}/queries/{id}/result</code></td>
+      <td><span class="badge b-ok">200</span></td>
+      <td>~1.0 s</td>
+      <td>ZIP artifact (see <a href="#artifacts">§7</a>)</td>
+    </tr>
+    <tr>
+      <td><code>POST &hellip;/environments/{env}/queries</code></td>
+      <td><span class="badge b-ok">200</span></td>
+      <td>~1.5 s to enqueue</td>
+      <td>New async query job</td>
+    </tr>
+    <tr>
+      <td><code>GET &hellip;/environments/{env}/analytics/exports</code></td>
+      <td><span class="badge b-ok">200</span></td>
+      <td>~1.8 s</td>
+      <td><code>{}</code> when no exports are configured</td>
+    </tr>
+    <tr>
+      <td><code>GET &hellip;/environments/{env}/analytics/datastores</code></td>
+      <td><span class="badge b-warn">404</span></td>
+      <td>~0.4 s</td>
+      <td>Edge-only API; does not exist in Apigee X</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>List API proxies</h3>
+
+<pre><code><span class="c"># curl</span>
+curl -s "http://localhost:8080/v1/organizations/gcp-pttep-th-it-apimgmt-dev/apis"</code></pre>
+
+<pre><code>{
+  <span class="k">"proxies"</span>: [
+    { <span class="k">"name"</span>: <span class="s">"AFE-Workflow"</span>, <span class="k">"apiProxyType"</span>: <span class="s">"PROGRAMMABLE"</span> },
+    { <span class="k">"name"</span>: <span class="s">"AI-Material-Master"</span>, <span class="k">"apiProxyType"</span>: <span class="s">"PROGRAMMABLE"</span> }
+  ]
+}</code></pre>
+
+<p class="fine">This org returns the modern object form, not the legacy flat string array. Both forms exist across Apigee versions &mdash; handle <code>typeof p === "string" ? p : p.name</code> if you need portability. A trailing slash on the path is tolerated and returns an identical payload.</p>
+
+<h3>Single proxy detail</h3>
+
+<pre><code>curl -s "http://localhost:8080/v1/organizations/gcp-pttep-th-it-apimgmt-dev/apis/ApigeeProxy-HealthCheck"</code></pre>
+
+<pre><code>{
+  <span class="k">"metaData"</span>: {
+    <span class="k">"createdAt"</span>: <span class="s">"1628055614791"</span>,
+    <span class="k">"lastModifiedAt"</span>: <span class="s">"1628055614791"</span>,
+    <span class="k">"subType"</span>: <span class="s">"Proxy"</span>
+  },
+  <span class="k">"name"</span>: <span class="s">"ApigeeProxy-HealthCheck"</span>,
+  <span class="k">"revision"</span>: [<span class="s">"1"</span>],
+  <span class="k">"latestRevisionId"</span>: <span class="s">"1"</span>,
+  <span class="k">"apiProxyType"</span>: <span class="s">"PROGRAMMABLE"</span>
+}</code></pre>
+
+<div class="callout">
+  <p><strong>Field name is <code>metaData</code>, not <code>meta</code>.</strong> Timestamps are epoch-millisecond strings, not ISO dates. <code>revision</code> is an array of strings even when there is only one revision.</p>
+</div>
+
+<h2 id="errors">5. Error responses</h2>
+
+<p>Two distinct error shapes reach you. Knowing which is which tells you where the problem lives.</p>
+
+<table>
+  <thead>
+    <tr><th>Shape</th><th>Origin</th><th>Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>{"error":"method_not_allowed",&hellip;}</code></td>
+      <td>Your local proxy</td>
+      <td>The method is not enabled. Apigee was never contacted.</td>
+    </tr>
+    <tr>
+      <td><code>{"error":{"code",&hellip;}}</code></td>
+      <td>Apigee / Google</td>
+      <td>The request was forwarded and rejected upstream. Read <code>error.message</code>.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Not found (404)</h3>
+<pre><code>{
+  <span class="k">"error"</span>: {
+    <span class="k">"code"</span>: 404,
+    <span class="k">"message"</span>: <span class="s">"generic::not_found: resource organizations/&hellip;/apis/foo not found"</span>,
+    <span class="k">"status"</span>: <span class="s">"NOT_FOUND"</span>,
+    <span class="k">"details"</span>: [
+      { <span class="k">"@type"</span>: <span class="s">"type.googleapis.com/google.rpc.RequestInfo"</span>,
+        <span class="k">"requestId"</span>: <span class="s">"17892784605342601227"</span> }
+    ]
+  }
+}</code></pre>
+
+<h3>Permission denied (403)</h3>
+<p>Requesting a non-existent <em>organization</em> returns <code>403 PERMISSION_DENIED</code> rather than <code>404</code>. This is correct Apigee behavior &mdash; it deliberately does not disclose whether an org exists. Do not interpret a 403 as "my credentials are broken" without checking the org name first.</p>
+
+<div class="callout">
+  <p><strong>Keep <code>details[].requestId</code> when reporting problems.</strong> It is the only handle Google support can use to trace a specific call.</p>
+</div>
+
+<h2 id="analytics">6. Analytics recipes</h2>
+
+<p>Apigee exposes analytics two ways, and they use <strong>different syntax</strong> for the same underlying data. This is the single biggest source of confusion.</p>
+
+<table>
+  <thead>
+    <tr><th></th><th>Synchronous</th><th>Asynchronous</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Endpoint</td><td><code>GET &hellip;/stats/{dimension}</code></td><td><code>POST &hellip;/queries</code></td></tr>
+    <tr><td>Best for</td><td>Quick lookups, small results</td><td>Large reports, many rows</td></tr>
+    <tr><td>Metric syntax</td><td><code>select=sum(message_count)</code></td><td><code>{"name":"message_count","function":"sum"}</code></td></tr>
+    <tr><td>Time syntax</td><td><code>MM/DD/YYYY HH:mm~MM/DD/YYYY HH:mm</code></td><td>RFC 3339 &mdash; <code>2026-11-17T00:00:00Z</code></td></tr>
+    <tr><td>Result</td><td>JSON inline</td><td>ZIP + gzip artifact</td></tr>
+  </tbody>
+</table>
+
+<h3>6.1 Synchronous: <code>/stats/{dimension}</code></h3>
+
+<pre><code>curl -s -G "http://localhost:8080/v1/organizations/gcp-pttep-th-it-apimgmt-dev/environments/dev/stats/apis" \
+  --data-urlencode "select=sum(message_count)" \
+  --data-urlencode "timeUnit=day" \
+  --data-urlencode "timeRange=11/22/2026 00:00~11/24/2026 23:59" \
+  --data-urlencode "topk=3" \
+  --data-urlencode "sortby=sum(message_count)"</code></pre>
+
+<p>Response shape groups values under <code>environments[] &rarr; dimensions[] &rarr; metrics[] &rarr; values[]</code>:</p>
+
+<pre><code>{
+  <span class="k">"environments"</span>: [{
+    <span class="k">"name"</span>: <span class="s">"dev"</span>,
+    <span class="k">"dimensions"</span>: [{
+      <span class="k">"name"</span>: <span class="s">"HR-WebServices"</span>,
+      <span class="k">"metrics"</span>: [{
+        <span class="k">"name"</span>: <span class="s">"sum(message_count)"</span>,
+        <span class="k">"values"</span>: [
+          { <span class="k">"timestamp"</span>: 1795478400000, <span class="k">"value"</span>: <span class="s">"3589"</span> },
+          { <span class="k">"timestamp"</span>: 1795392000000, <span class="k">"value"</span>: <span class="s">"9485"</span> }
+        ]
+      }]
+    }]
+  }],
+  <span class="k">"metaData"</span>: { &hellip; }
+}</code></pre>
+
+<p><strong>Parameter rules observed:</strong></p>
+<ul>
+  <li><code>topk</code> requires <code>sortby</code>. Omitting it fails: <em>"sort columns must be specified for topk parameter"</em>.</li>
+  <li>Metric availability is <strong>per organization</strong>. <code>response_time</code> does not exist in this org's schema, producing <em>"field \"response_time\" not present in schema of gcp-pttep-th-it-apimgmt-dev"</em>.</li>
+  <li>Query parameter values arrive intact and are validated server-side, so Apigee's validation messages are a reliable way to discover valid field names.</li>
+  <li>Verified dimensions: <code>proxy</code>, <code>apis</code>.</li>
+</ul>
+
+<h3>6.2 Asynchronous: <code>POST /queries</code></h3>
+
+<p>Three steps: create, poll, download.</p>
+
+<h4>Step 1 &mdash; create</h4>
+<pre><code>curl -s -X POST \
+  "http://localhost:8080/v1/organizations/gcp-pttep-th-it-apimgmt-dev/environments/dev/queries" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dimensions": ["proxy"],
+    "metrics": [{ "name": "message_count", "function": "sum" }],
+    "timeRange": { "start": "2026-11-17T00:00:00Z", "end": "2026-11-24T00:00:00Z" },
+    "groupByTimeUnit": "day",
+    "limit": 5
+  }'</code></pre>
+
+<pre><code>{
+  <span class="k">"self"</span>: <span class="s">"/organizations/gcp-pttep-th-it-apimgmt-dev/environments/dev/queries/7cb64c22-&hellip;"</span>,
+  <span class="k">"state"</span>: <span class="s">"enqueued"</span>,
+  <span class="k">"created"</span>: <span class="s">"2026-11-24T04:12:13Z"</span>
+}</code></pre>
+
+<div class="callout warn">
+  <p><strong>Request-body rules that will bite you</strong></p>
+  <ul>
+    <li><code>metrics[].name</code> is the bare metric &mdash; <code>"message_count"</code>. Writing <code>"sum(message_count)"</code> here is rejected. That bracket form belongs to <code>/stats</code> only.</li>
+    <li><code>timeRange.start</code> / <code>.end</code> must be RFC 3339 with a <code>T</code> separator and zone. <code>"2026-11-17 00:00:00"</code> is rejected with a Go time-parse error.</li>
+    <li>The response is <code>200</code>, not <code>201</code> or <code>202</code>.</li>
+  </ul>
+</div>
+
+<h4>Step 2 &mdash; poll until <code>completed</code></h4>
+<pre><code>curl -s "http://localhost:8080/v1/organizations/gcp-pttep-th-it-apimgmt-dev/environments/dev/queries/{id}"</code></pre>
+
+<pre><code>{
+  <span class="k">"state"</span>: <span class="s">"completed"</span>,
+  <span class="k">"result"</span>: {
+    <span class="k">"self"</span>: <span class="s">"&hellip;/queries/{id}/result"</span>,
+    <span class="k">"expires"</span>: <span class="s">"2026-11-30T20:12:25-08:00"</span>
+  },
+  <span class="k">"resultRows"</span>: <span class="s">"5"</span>,
+  <span class="k">"resultFileSize"</span>: <span class="s">"0.15 KB"</span>,
+  <span class="k">"executionTime"</span>: <span class="s">"12 seconds"</span>,
+  <span class="k">"queryParams"</span>: { &hellip; }
+}</code></pre>
+
+<p>Observed state progression: <code>enqueued</code> &rarr; <code>running</code> &rarr; <code>completed</code>, taking about 12&nbsp;seconds for a 5-row query. Poll every 3&ndash;5&nbsp;seconds; do not spin.</p>
+
+<p class="fine"><strong>Timezone quirk:</strong> the POST response renders <code>created</code> as UTC (<code>&hellip;04:12:13Z</code>) while subsequent GETs render the same instant as <code>&hellip;20:12:13-08:00</code>. Same moment, different notation &mdash; normalize before comparing or sorting.</p>
+
+<h2 id="artifacts">7. Query result files</h2>
+
+<p>The result endpoint does not return JSON directly. It returns a ZIP archive containing a gzipped JSON file &mdash; <strong>two layers of compression</strong>.</p>
+
+<pre><code>content-type: application/octet-stream
+content-disposition: attachment; filename="OfflineQueryResult-{id}.zip"</code></pre>
+
+<p>Inside the ZIP is <code>QueryResults-{id}-000000000000.json.gz</code>. Decompress both layers, then read newline-delimited JSON:</p>
+
+<pre><code>{<span class="k">"day"</span>:<span class="s">"2026-11-20 00:00:00 UTC"</span>,<span class="k">"proxy"</span>:<span class="s">"admin"</span>,<span class="k">"sum_message_count"</span>:<span class="s">"10"</span>}
+{<span class="k">"day"</span>:<span class="s">"2026-11-18 00:00:00 UTC"</span>,<span class="k">"proxy"</span>:<span class="s">"insure"</span>,<span class="k">"sum_message_count"</span>:<span class="s">"881"</span>}
+{<span class="k">"day"</span>:<span class="s">"2026-11-18 00:00:00 UTC"</span>,<span class="k">"proxy"</span>:<span class="s">"new-cluster"</span>,<span class="k">"sum_message_count"</span>:<span class="s">"2"</span>}</code></pre>
+
+<p>PowerShell:</p>
+<pre><code>curl.exe -sS -o result.zip "http://localhost:8080/v1/organizations/{org}/environments/dev/queries/{id}/result"
+Expand-Archive .\result.zip -DestinationPath .\result-out -Force
+<span class="c"># then gunzip each *.gz inside .\result-out</span></code></pre>
+
+<div class="callout bad">
+  <p><strong>Results expire 7 days after completion</strong> &mdash; <code>result.expires</code> tells you when. After that, fetching returns <code>400 INVALID_ARGUMENT</code> with <em>"query result expired on &hellip;"</em>. Download promptly; re-running the query is the only recovery.</p>
+  <p class="fine">Because <code>DELETE</code> is blocked on this proxy, query jobs cannot be cancelled or cleaned up manually. They age out on their own.</p>
+</div>
+
+<h2 id="clients">8. Calling it from shell tools</h2>
+
+<h3>curl &mdash; recommended for anything with a body</h3>
+<pre><code>curl -s "http://localhost:8080/v1/organizations/gcp-pttep-th-it-apimgmt-dev/apis"
+
+curl -s -X POST "http://localhost:8080/v1/organizations/{org}/environments/dev/queries" \
+  -H "Content-Type: application/json" --data-binary "@query-body.json"</code></pre>
+
+<p><code>--data-binary "@file"</code> sends only <code>Content-Length</code> and works reliably.</p>
+
+<h3>PowerShell gotchas</h3>
+<ul>
+  <li>Inline JSON in double quotes loses its quotes before reaching the executable, producing mangled payloads like <code>{dimensions:[proxy]}</code>. Prefer <code>--data-binary "@file.json"</code> in curl, or write the body to a file.</li>
+  <li>When using Postman CLI on Windows, pass <code>--body @&lt;ABSOLUTE-PATH&gt;</code>. A relative <code>@file</code> was read as empty during testing.</li>
+</ul>
+
+<h3>Postman CLI &mdash; know the limitation</h3>
+
+<p>Postman CLI v1.74.0 sends <strong>both</strong> <code>Content-Length</code> and <code>Transfer-Encoding: chunked</code> on POST bodies. That combination is ambiguous per RFC 7230, and this proxy ends up forwarding an empty body, so Apigee replies:</p>
+
+<pre><code>{ <span class="k">"error"</span>: { <span class="k">"code"</span>: 400,
+  <span class="k">"message"</span>: <span class="s">"request body cannot be empty"</span>,
+  <span class="k">"status"</span>: <span class="s">"INVALID_ARGUMENT"</span> } }</code></pre>
+
+<p>The identical file through curl succeeds. Until one side is fixed, use curl for POSTs.</p>
+<ul>
+  <li><strong>Proxy fix:</strong> honour <code>Transfer-Encoding: chunked</code> request bodies. A typical cause is copying the inbound <code>Content-Length</code> onto the outbound request instead of piping the inbound stream.</li>
+  <li><strong>Client fix:</strong> run <code>postman update</code> (v1.93.1 was available at time of testing) and retest.</li>
+</ul>
+
+<p class="fine">GET requests through Postman CLI work fine &mdash; this limitation is specific to request bodies.</p>
+
+<h2 id="gotchas">9. Gotchas and limits</h2>
+
+<ul>
+  <li><strong>Analytics is slow.</strong> <code>/stats</code> takes 1.6&ndash;3.0&nbsp;s versus ~0.6&nbsp;s for management calls. Set timeouts to 30&nbsp;s or more; 60&nbsp;s for query creation and polling.</li>
+  <li><strong>Exit codes are not health signals.</strong> Postman CLI returns <code>1</code> for any non-2xx, even when every assertion passed. Gate CI on assertion counts, not just the exit code.</li>
+  <li><strong>Schema introspection is unreliable.</strong> <code>/analytics/admin/schemav2</code> requires a <code>type</code> parameter and returned <code>NOT_FOUND</code> for <code>api</code>, <code>env</code>, and <code>all</code> on this org. Use validation error messages, or the Apigee console, to discover valid metric names.</li>
+  <li><strong><code>/analytics/datastores</code> returns 404 with an HTML body.</strong> That is an Edge-only API, absent from Apigee X. Not a proxy fault.</li>
+  <li><strong>Two API generations coexist.</strong> <code>/stats</code> uses <code>sum(metric)</code> plus <code>MM/DD/YYYY</code> ranges; <code>/queries</code> uses bare metrics plus RFC 3339. Keep the two recipes separate in your code.</li>
+  <li><strong>Trailing slashes are tolerated</strong> on collection paths (verified on <code>/apis/</code>), so do not rely on a 404 to detect a wrong path.</li>
+</ul>
+
+<h2 id="security">10. Security notes</h2>
+
+<div class="callout warn">
+  <p><strong>The proxy is unauthenticated by design.</strong> Anyone or anything running on this machine can read the org's full proxy inventory and analytics through it. That is acceptable for a local development tool, and it is why the binding matters:</p>
+  <p><code>netstat</code> confirms it listens on <code>127.0.0.1:8080</code> only &mdash; loopback, not the LAN. <strong>Do not rebind to <code>0.0.0.0</code></strong> without adding authentication in front of it; the injected credentials are real and would be usable by anyone who can reach the port.</p>
+</div>
+
+<ul>
+  <li>Client-supplied <code>Authorization</code> headers are overridden, not honoured. Do not design flows that depend on passing your own token through this proxy.</li>
+  <li>The proxy cannot mutate anything while writes are blocked, which sharply limits blast radius. If you enable <code>POST /analytics/exports</code> or <code>DELETE</code>, re-assess that.</li>
+  <li>Upstream connectivity and credentials come from the proxy's own configuration, not from the caller &mdash; a misconfigured proxy fails for every client at once.</li>
+</ul>
+
+<h2 id="verify">11. Verifying the proxy</h2>
+
+<p><code>verify-proxy.js</code> is a dependency-free Node script (Node 18+, uses built-in <code>fetch</code>) that walks the proxy's read paths and prints a verdict. It is <strong>read-only</strong> &mdash; no creates, updates, or deletes &mdash; so it is safe to run in CI on every build.</p>
+
+<pre><code>node verify-proxy.js
+node verify-proxy.js http://localhost:8080
+BASE_URL=http://localhost:8080 ORG=gcp-pttep-th-it-apimgmt-dev ENV=dev node verify-proxy.js
+NO_COLOR=1 node verify-proxy.js</code></pre>
+
+<p>Expected output when the proxy is healthy:</p>
+
+<pre><code>Apigee local management proxy — verification
+  base : http://localhost:8080
+  org  : gcp-pttep-th-it-apimgmt-dev
+  env  : dev
+
+[ OK ] proxy is reachable 626ms
+[ OK ] environments list (6 found: dev, dev2, dev3, sit, sit2, sit3) 626ms
+[ OK ] API proxy list (354 proxies, no duplicates) 630ms
+[ OK ] proxy detail (AFE-Workflow, revision 1,3) 616ms
+[ OK ] missing proxy returns a well-formed 404 647ms
+[ OK ] client Authorization header is overridden (bogus token still works) 528ms
+[ OK ] analytics sync stats (/stats/proxy) 2864ms
+[ OK ] analytics query list (7 jobs) 1892ms
+[ OK ] write methods are still gated (DELETE → 405) 2ms
+
+Summary
+  9 passed   0 warned   0 failed
+  slowest: analytics sync stats (/stats/proxy) — 2864ms
+
+RESULT: proxy is working.</code></pre>
+
+<h3>What it checks</h3>
+
+<table>
+  <thead>
+    <tr><th>Check</th><th>Passes when</th><th>Severity if wrong</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Reachability</td><td>TCP connects and responds below 500</td><td><span class="badge b-block">FAIL</span> aborts early</td></tr>
+    <tr><td>Environments</td><td><code>200</code> with a non-empty string array</td><td><span class="badge b-block">FAIL</span></td></tr>
+    <tr><td>API proxy list</td><td><code>200</code>, <code>proxies[]</code> present, no duplicate names</td><td><span class="badge b-block">FAIL</span></td></tr>
+    <tr><td>Proxy detail</td><td>Name echoes back, <code>revision[]</code> non-empty</td><td><span class="badge b-block">FAIL</span></td></tr>
+    <tr><td>Missing proxy</td><td><code>404</code> with a numeric <code>error.code</code></td><td><span class="badge b-warn">WARN</span> on 403</td></tr>
+    <tr><td>Auth injection</td><td>Bogus bearer token still returns <code>200</code></td><td><span class="badge b-warn">WARN</span></td></tr>
+    <tr><td>Sync analytics</td><td><code>/stats/proxy</code> returns <code>200</code></td><td><span class="badge b-warn">WARN</span> on <code>400</code> schema rejection</td></tr>
+    <tr><td>Async query list</td><td><code>200</code> with <code>queries[]</code></td><td><span class="badge b-block">FAIL</span></td></tr>
+    <tr><td>Method policy</td><td><code>DELETE</code> still returns <code>405</code></td><td><span class="badge b-warn">WARN</span> if writes got enabled</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <p><strong>Why some checks warn instead of fail.</strong> A <code>403</code> on a missing resource and a <code>400</code> on a metric name are both correct Apigee behavior, not proxy faults. Failing on them would produce noise and train you to ignore the script. Only conditions that actually indicate a broken proxy return <code>FAIL</code>.</p>
+</div>
+
+<h3>Exit codes and configuration</h3>
+
+<p><code>0</code> when every check passes, <code>1</code> if anything failed. Warnings do not affect the exit code. Configuration comes from arguments or environment variables:</p>
+
+<table>
+  <thead>
+    <tr><th>Variable</th><th>Default</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>argv[2]</code> / <code>BASE_URL</code></td><td><code>http://localhost:8080</code></td><td>Proxy address</td></tr>
+    <tr><td><code>ORG</code></td><td><code>gcp-pttep-th-it-apimgmt-dev</code></td><td>Organization to verify</td></tr>
+    <tr><td><code>ENV</code></td><td><code>dev</code></td><td>Environment for analytics checks</td></tr>
+    <tr><td><code>TIMEOUT_MS</code></td><td><code>30000</code></td><td>Per-request timeout; analytics gets at least 45 s</td></tr>
+    <tr><td><code>NO_COLOR</code></td><td>unset</td><td>Disables ANSI colour for logs and CI</td></tr>
+  </tbody>
+</table>
+
+<p>Pointing it at a dead port or a wrong org produces a diagnosable failure rather than a timeout:</p>
+
+<pre><code>[FAIL] proxy is reachable
+       connection failed (ECONNREFUSED) — is the proxy running on http://localhost:9999?</code></pre>
+
+<pre><code>[FAIL] environments list 534ms
+       403 PERMISSION_DENIED — check ORG and the proxy credentials</code></pre>
+
+<h2>Appendix: test evidence</h2>
+
+<p class="fine">All figures below were produced by live requests against <code>http://localhost:8080</code> on 24 Nov 2026.</p>
+
+<table>
+  <thead>
+    <tr><th>Check</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Proxy list contract (shape, uniqueness, naming rules, type)</td><td><span class="badge b-ok">10 / 10 assertions</span></td></tr>
+    <tr><td>Single proxy detail contract</td><td><span class="badge b-ok">6 / 6 assertions</span></td></tr>
+    <tr><td>Error envelope for missing proxy</td><td><span class="badge b-ok">4 / 4 assertions</span></td></tr>
+    <tr><td>Proxies returned</td><td>353, no duplicates</td></tr>
+    <tr><td>Async analytics lifecycle (create &rarr; poll &rarr; download &rarr; unwrap)</td><td><span class="badge b-ok">END TO END</span> 5 rows, 12 s</td></tr>
+    <tr><td>Query result expiry enforcement</td><td><span class="badge b-ok">CONFIRMED</span> 400 on expired result</td></tr>
+    <tr><td>Bind address</td><td>127.0.0.1 only</td></tr>
+  </tbody>
+</table>
+
+<footer>
+  Apigee Local Management Proxy &mdash; usage guide generated from verified test results, 24 Nov 2026.<br>
+  Base URL <code>http://localhost:8080</code> &middot; org <code>gcp-pttep-th-it-apimgmt-dev</code>
+</footer>
+
+</div>
+</body>
+</html>

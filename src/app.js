@@ -31,26 +31,48 @@ export function createApp({ config, tokenProvider, logger = console }) {
     (config.allowedMethods ?? []).map((method) => method.toUpperCase()),
   );
   const pathMatchers = compilePathMatchers(config.allowedPathPrefixes ?? []);
+  const methodPathRules = (config.allowedMethodPaths ?? []).map(({ method, path }) => ({
+    method,
+    matcher: compilePathMatchers([path])[0],
+  }));
+
+  function allowedMethodsFor(pathname) {
+    const methods = new Set(allowedMethods);
+    for (const rule of methodPathRules) {
+      if (rule.matcher.test(pathname)) methods.add(rule.method);
+    }
+    return methods;
+  }
 
   app.use((req, res, next) => {
-    if (allowedMethods.size > 0 && !allowedMethods.has(req.method.toUpperCase())) {
-      const methods = [...allowedMethods];
-      res.setHeader('Allow', methods.join(', '));
-      res.status(405).json({
-        error: 'method_not_allowed',
-        message: 'The requested HTTP method is not allowed.',
-        allowedMethods: methods,
-      });
-      return;
+    const pathname = stripBasePath(req.originalUrl.split('?')[0], config.basePath);
+    const method = req.method.toUpperCase();
+
+    if (allowedMethods.size > 0) {
+      const methods = [...allowedMethodsFor(pathname)];
+      if (!methods.includes(method)) {
+        res.setHeader('Allow', methods.join(', '));
+        res.status(405).json({
+          error: 'method_not_allowed',
+          message: 'The requested HTTP method is not allowed.',
+          allowedMethods: methods,
+        });
+        return;
+      }
     }
 
     if (pathMatchers.length > 0) {
-      const pathname = stripBasePath(req.originalUrl.split('?')[0], config.basePath);
       if (!pathMatchers.some((matcher) => matcher.test(pathname))) {
+        const methodRuleMatches = methodPathRules.some(
+          (rule) => rule.method === method && rule.matcher.test(pathname),
+        );
         res.status(403).json({
           error: 'path_not_allowed',
           message: 'The requested path is not in ALLOWED_PATH_PREFIXES.',
           allowedPrefixes: config.allowedPathPrefixes,
+          ...(methodRuleMatches && {
+            hint: `ALLOWED_METHOD_PATHS allows ${method} on this path, but the path is not covered by ALLOWED_PATH_PREFIXES.`,
+          }),
         });
         return;
       }

@@ -61,6 +61,7 @@ export function makeConfig(overrides = {}) {
     timeoutMs: 5000,
     allowedPathPrefixes: [],
     allowedMethods: [],
+    allowedMethodPaths: [],
     basePath: '',
     verifyTls: true,
     logRequests: false,

@@ -28,6 +28,24 @@ function readList(value) {
     .filter(Boolean);
 }
 
+const METHOD_PATTERN = /^[A-Z]+$/;
+
+function readMethodPathRules(value) {
+  return readList(value).map((entry) => {
+    const separator = entry.indexOf(':');
+    const method = separator > 0 ? entry.slice(0, separator).trim().toUpperCase() : '';
+    const path = separator > 0 ? entry.slice(separator + 1).trim() : '';
+
+    if (!METHOD_PATTERN.test(method) || !path.startsWith('/')) {
+      throw new Error(
+        `ALLOWED_METHOD_PATHS entries must look like "METHOD:/path", received "${entry}".`,
+      );
+    }
+
+    return { method, path };
+  });
+}
+
 function normalizeBasePath(value) {
   const trimmed = (value ?? '').trim();
   if (!trimmed || trimmed === '/') return '';
@@ -68,6 +86,7 @@ export function loadConfig(env = process.env) {
     subject: env.GOOGLE_IMPERSONATE_SUBJECT || undefined,
     allowedPathPrefixes: readList(env.ALLOWED_PATH_PREFIXES),
     allowedMethods: readList(env.ALLOWED_METHODS).map((method) => method.toUpperCase()),
+    allowedMethodPaths: readMethodPathRules(env.ALLOWED_METHOD_PATHS),
     basePath: normalizeBasePath(env.BASE_PATH),
     timeoutMs: readInt(env.PROXY_TIMEOUT_MS, DEFAULT_TIMEOUT_MS, 'PROXY_TIMEOUT_MS'),
     verifyTls: readBool(env.TARGET_TLS_VERIFY, true),

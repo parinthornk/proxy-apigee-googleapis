@@ -202,6 +202,130 @@ test('read-only allowlist covers deployments, proxy bundle and target servers', 
   assert.equal(upstream.requests.length, paths.length);
 });
 
+test('allows POST only on the queries path while keeping the rest GET-only', async (t) => {
+  const upstream = await startUpstream();
+  const proxy = await startProxy({
+    config: makeConfig({
+      target: upstream.url,
+      allowedMethods: ['GET'],
+      allowedPathPrefixes: [...READ_ONLY_PREFIXES, '/v1/organizations/*/environments/*/queries'],
+      allowedMethodPaths: [
+        { method: 'POST', path: '/v1/organizations/*/environments/*/queries' },
+      ],
+    }),
+    tokenProvider: fixedTokenProvider(),
+  });
+  t.after(proxy.close);
+  t.after(upstream.close);
+
+  const query = await fetch(
+    `${proxy.baseUrl}/v1/organizations/my-org/environments/prod/queries`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ query: 'select count(*) from analytics' }),
+    },
+  );
+  assert.equal(query.status, 200);
+  assert.deepEqual(await query.json(), { ok: true });
+
+  const read = await fetch(`${proxy.baseUrl}/v1/organizations/my-org/environments/prod/queries?pageSize=5`);
+  assert.equal(read.status, 200);
+
+  const blockedPost = await fetch(`${proxy.baseUrl}/v1/organizations/my-org/apis`, {
+    method: 'POST',
+  });
+  assert.equal(blockedPost.status, 405);
+  assert.equal(blockedPost.headers.get('allow'), 'GET');
+
+  const blockedSimilarPath = await fetch(
+    `${proxy.baseUrl}/v1/organizations/my-org/environments/prod/queriesX`,
+    { method: 'POST' },
+  );
+  assert.equal(blockedSimilarPath.status, 405);
+
+  const [queryRequest, readRequest] = upstream.requests;
+  assert.equal(upstream.requests.length, 2);
+  assert.equal(queryRequest.method, 'POST');
+  assert.equal(queryRequest.url, '/v1/organizations/my-org/environments/prod/queries');
+  assert.deepEqual(JSON.parse(queryRequest.body), { query: 'select count(*) from analytics' });
+  assert.equal(readRequest.method, 'GET');
+});
+
+test('advertises the path-scoped POST in the Allow header for that path', async (t) => {
+  const upstream = await startUpstream();
+  const proxy = await startProxy({
+    config: makeConfig({
+      target: upstream.url,
+      allowedMethods: ['GET'],
+      allowedMethodPaths: [
+        { method: 'POST', path: '/v1/organizations/*/environments/*/queries' },
+      ],
+    }),
+    tokenProvider: fixedTokenProvider(),
+  });
+  t.after(proxy.close);
+  t.after(upstream.close);
+
+  const res = await fetch(`${proxy.baseUrl}/v1/organizations/my-org/environments/prod/queries`, {
+    method: 'PUT',
+  });
+  assert.equal(res.status, 405);
+  assert.equal(res.headers.get('allow'), 'GET, POST');
+  assert.deepEqual((await res.json()).allowedMethods, ['GET', 'POST']);
+  assert.equal(upstream.requests.length, 0);
+});
+
+test('explains when a path-scoped method is blocked by the path allowlist', async (t) => {
+  const upstream = await startUpstream();
+  const proxy = await startProxy({
+    config: makeConfig({
+      target: upstream.url,
+      allowedMethods: ['GET'],
+      allowedPathPrefixes: ['/v1/organizations/*/apis'],
+      allowedMethodPaths: [
+        { method: 'POST', path: '/v1/organizations/*/environments/*/queries' },
+      ],
+    }),
+    tokenProvider: fixedTokenProvider(),
+  });
+  t.after(proxy.close);
+  t.after(upstream.close);
+
+  const res = await fetch(`${proxy.baseUrl}/v1/organizations/my-org/environments/prod/queries`, {
+    method: 'POST',
+  });
+  assert.equal(res.status, 403);
+  const body = await res.json();
+  assert.equal(body.error, 'path_not_allowed');
+  assert.match(body.hint, /ALLOWED_METHOD_PATHS allows POST/);
+  assert.equal(upstream.requests.length, 0);
+});
+
+test('evaluates path-scoped methods after stripping the base path', async (t) => {
+  const upstream = await startUpstream();
+  const proxy = await startProxy({
+    config: makeConfig({
+      target: upstream.url,
+      basePath: '/apigee',
+      allowedMethods: ['GET'],
+      allowedPathPrefixes: ['/v1/organizations/*/environments/*/queries'],
+      allowedMethodPaths: [
+        { method: 'POST', path: '/v1/organizations/*/environments/*/queries' },
+      ],
+    }),
+    tokenProvider: fixedTokenProvider(),
+  });
+  t.after(proxy.close);
+  t.after(upstream.close);
+
+  const res = await fetch(`${proxy.baseUrl}/apigee/v1/organizations/my-org/environments/prod/queries`, {
+    method: 'POST',
+  });
+  assert.equal(res.status, 200);
+  assert.equal(upstream.requests[0].url, '/v1/organizations/my-org/environments/prod/queries');
+});
+
 test('streams a binary proxy bundle download with the query intact', async (t) => {
   const bundle = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff, 0x10, 0x00, 0x99]);
   const seen = [];

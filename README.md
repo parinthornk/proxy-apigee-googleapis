@@ -69,6 +69,7 @@ Example output for `healthz`:
 | `BASE_PATH` | unset | Mount path; the prefix is stripped before forwarding (e.g. `/apigee` turns `/apigee/v1/...` into `/v1/...`) |
 | `ALLOWED_PATH_PREFIXES` | unset (all paths) | Comma-separated path prefixes the proxy will forward; others get `403`. A `*` matches a single path segment, e.g. `/v1/organizations/*/apis` |
 | `ALLOWED_METHODS` | unset (all methods) | Comma-separated HTTP methods the proxy will forward; others get `405` with an `Allow` header, e.g. `GET` |
+| `ALLOWED_METHOD_PATHS` | unset | Extra methods allowed only on matching paths, written as `METHOD:/path` entries, e.g. `POST:/v1/organizations/*/environments/*/queries`. Only adds methods; the path must still be covered by `ALLOWED_PATH_PREFIXES` |
 | `PROXY_TIMEOUT_MS` | `60000` | Upstream connect/response timeout |
 | `TARGET_TLS_VERIFY` | `true` | Set to `false` to skip TLS verification (not recommended) |
 | `LOG_REQUESTS` | `true` | Log forwarded requests and upstream status codes |
@@ -93,6 +94,18 @@ This forwards:
 - `GET /v1/organizations/<org>/environments/<env>/targetservers` and `.../targetservers/<name>`
 
 Everything else is rejected: other methods get `405`, other paths (apps, developers, environments, etc.) get `403`. The `*` matches exactly one path segment, so the org, environment and resource names are not hardcoded.
+
+### Allowing a single write call
+
+Keep the read-only method rule and add one path-scoped exception, for example the Apigee `queries` endpoint (`POST /v1/organizations/{org}/environments/{env}/queries`):
+
+```
+ALLOWED_METHODS=GET
+ALLOWED_METHOD_PATHS=POST:/v1/organizations/*/environments/*/queries
+ALLOWED_PATH_PREFIXES=...,/v1/organizations/*/environments/*/queries
+```
+
+`ALLOWED_METHOD_PATHS` only adds methods for paths it matches; every other path stays `GET`-only. The `Allow` header and `405` body reflect the methods allowed for the requested path, so `queries` reports `GET, POST`. Rules are evaluated after `BASE_PATH` is stripped, and the path must also appear in `ALLOWED_PATH_PREFIXES` — if it does not, the request gets `403` with a `hint` naming the mismatch.
 
 Proxy bundles are streamed through unmodified, so `?format=bundle` downloads keep their `application/octet-stream` body. If large bundles exceed the default timeout, raise `PROXY_TIMEOUT_MS`.
 

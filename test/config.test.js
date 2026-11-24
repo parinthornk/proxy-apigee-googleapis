@@ -17,6 +17,7 @@ test('applies sane defaults', () => {
   assert.deepEqual(config.scopes, ['https://www.googleapis.com/auth/cloud-platform']);
   assert.deepEqual(config.allowedPathPrefixes, []);
   assert.deepEqual(config.allowedMethods, []);
+  assert.deepEqual(config.allowedMethodPaths, []);
   assert.equal(config.basePath, '');
   assert.equal(config.timeoutMs, 60_000);
   assert.equal(config.verifyTls, true);
@@ -62,6 +63,28 @@ test('parses scopes, allowed prefixes, base path and numeric settings', () => {
   assert.equal(config.port, 9000);
   assert.equal(config.timeoutMs, 15_000);
   assert.equal(config.verifyTls, false);
+});
+
+test('parses path-scoped method rules and rejects malformed ones', () => {
+  const config = loadConfig({
+    ...baseEnv,
+    ALLOWED_METHODS: 'GET',
+    ALLOWED_METHOD_PATHS:
+      'post:/v1/organizations/*/environments/*/queries, DELETE:/v1/organizations/*/apis/*',
+  });
+
+  assert.deepEqual(config.allowedMethodPaths, [
+    { method: 'POST', path: '/v1/organizations/*/environments/*/queries' },
+    { method: 'DELETE', path: '/v1/organizations/*/apis/*' },
+  ]);
+
+  for (const bad of ['POST', 'POST:queries', ':/v1/organizations', 'P0ST:/v1/x', ':']) {
+    assert.throws(
+      () => loadConfig({ ...baseEnv, ALLOWED_METHOD_PATHS: bad }),
+      /ALLOWED_METHOD_PATHS entries must look like "METHOD:\/path"/,
+      `expected "${bad}" to be rejected`,
+    );
+  }
 });
 
 test('rejects invalid numeric settings', () => {
